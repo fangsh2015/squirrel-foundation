@@ -54,14 +54,20 @@ import static com.google.common.base.Preconditions.checkState;
 public abstract class AbstractStateMachine<T extends StateMachine<T, S, E, C>, S, E, C> extends AbstractSubject implements StateMachine<T, S, E, C> {
     
     private static final Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
-    
+
+    /**
+     * 状态机用来执行状态流转Action或者方法的对象
+     */
     private final ActionExecutionService<T, S, E, C> executor = SquirrelProvider.getInstance().newInstance(
             new TypeReference<ActionExecutionService<T, S, E, C>>(){});
     
     private StateMachineData<T, S, E, C> data;
     
     private volatile StateMachineStatus status = StateMachineStatus.INITIALIZED;
-    
+
+    /**
+     * 状态机事件队列
+     */
     private LinkedBlockingDeque<Pair<E, C>> queuedEvents = new LinkedBlockingDeque<Pair<E, C>>();
     
     private LinkedBlockingQueue<Pair<E, C>> queuedTestEvents = new LinkedBlockingQueue<Pair<E, C>>();
@@ -201,7 +207,10 @@ public abstract class AbstractStateMachine<T extends StateMachine<T, S, E, C>, S
         }
         return false;
     }
-    
+
+    /**
+     * 处理事件，从事件队列中获取需要处理的事件进行处理
+     */
     private void processEvents() {
         if (isIdle()) {
             writeLock.lock();
@@ -221,6 +230,9 @@ public abstract class AbstractStateMachine<T extends StateMachine<T, S, E, C>, S
                     processEvent(event, context, data, executor, isDataIsolateEnabled);
                 }
                 ImmutableState<T, S, E, C> rawState = data.read().currentRawState();
+                /**
+                 * 是否自动停止状态机
+                 */
                 if(isAutoTerminateEnabled && rawState.isRootState() && rawState.isFinalState()) {
                     terminate(context);
                 }
@@ -261,6 +273,7 @@ public abstract class AbstractStateMachine<T extends StateMachine<T, S, E, C>, S
     private void fire(E event, C context, boolean insertAtFirst) {
         boolean isEntryPoint = isEntryPoint();
         if(isEntryPoint) {
+            // TODO: 2020/5/9 这个是做什么判断
             StateMachineContext.set(getThis());
         } else if(isDelegatorModeEnabled && StateMachineContext.currentInstance()!=this) {
             T currentInstance = StateMachineContext.currentInstance();
@@ -521,12 +534,18 @@ public abstract class AbstractStateMachine<T extends StateMachine<T, S, E, C>, S
         }
     }
 
+    /**
+     * 装配状态（遍历其父状态）所有的action
+     * @param origin
+     * @param stateContext
+     */
     private void entryAll(ImmutableState<T, S, E, C> origin, StateContext<T, S, E, C> stateContext) {
         Stack<ImmutableState<T, S, E, C>> stack = new Stack<ImmutableState<T, S, E, C>>();
 
         ImmutableState<T, S, E, C> state = origin;
         while (state != null) {
             stack.push(state);
+            // 查找父状态
             state = state.getParentState();
         }
         while (stack.size() > 0) {

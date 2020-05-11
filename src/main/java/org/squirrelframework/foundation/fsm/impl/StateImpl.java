@@ -413,7 +413,7 @@ class StateImpl<T extends StateMachine<T, S, E, C>, S, E, C> implements MutableS
                 }
             }
         }
-
+        // 查找相关的transition （由fromState，even）
         List<ImmutableTransition<T, S, E, C>> transitions = getTransitions(stateContext.getEvent());
         for(final ImmutableTransition<T, S, E, C> transition : transitions) {
             transition.internalFire(stateContext);
